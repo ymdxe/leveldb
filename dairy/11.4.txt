@@ -1,0 +1,67 @@
+1·执行编译
+cd leveldb
+mkdir -p build && cd build 
+cmake -DCMAKE_BUILD_TYPE=Release(Debug) .. && cmake --build .
+
+launch.json文件内容：
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug test.cpp",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/test",  // 可执行文件路径
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/test",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build test.cpp",
+            "miDebuggerPath": "/usr/bin/gdb",  // 确保路径正确，通常是/usr/bin/gdb
+            "justMyCode": true
+        }
+    ]
+}
+
+
+
+2·运行demo测试步骤
+运行命令：g++ -std=c++11 test.cpp -lleveldb -o test
+调试命令：g++ -std=c++11 -g test.cpp -lleveldb -o test
+
+然后执行可执行文件：./test
+若是调试：gdb ./test
+  -gdb中加断点：break main         //在main函数处加断点
+               break test.cpp:15  //在test.cpp文件的15行加断点
+
+  -run                            //运行程序
+  -next/n                         //单步执行
+  -step/s                         //单步执行，进入函数内部
+  -print  变量名                   //打印变量的值
+  -continue                       //继续执行程序
+  -finish                         //跳出当前函数
+  -quit                           //退出gdb
+
+
+3·阅读源码
+-1·Slice类(slice.h)，避免string的深拷贝浪费内存
+
+-2·status类(status.h)，包含状态信息，前四位表示消息长度，第五位表示错误信息。
+学习到了移动构造函数和移动赋值函数
+
+-3·编码(coding.h)，leveldb的特殊编码方式，每一个Byte最高位bit用0/1表示该整数是否结束，用剩余7bit表示实际的数值
+
+-4·options(options.h)记录leveldb中的很多参数信息
+
+-5·skiplist(skiplist.h)线段跳表
+组织KV数据对
+

@@ -21,15 +21,18 @@ class MemTable {
  public:
   // MemTables are reference counted.  The initial reference count
   // is zero and the caller must call Ref() at least once.
+  //  
   explicit MemTable(const InternalKeyComparator& comparator);
 
   MemTable(const MemTable&) = delete;
   MemTable& operator=(const MemTable&) = delete;
 
   // Increase reference count.
+  // 引用计数，Ref和Unref负责引用计数
   void Ref() { ++refs_; }
 
   // Drop reference count.  Delete if no more references exist.
+  // 判断引用计数是否为0，当引用次数减到0时删除该对象
   void Unref() {
     --refs_;
     assert(refs_ >= 0);

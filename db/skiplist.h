@@ -45,6 +45,7 @@ class SkipList {
   // Create a new SkipList object that will use "cmp" for comparing keys,
   // and will allocate memory using "*arena".  Objects allocated in the arena
   // must remain allocated for the lifetime of the skiplist object.
+  // 在arena中声明的对象在跳表对象的生命周期内保持分配状态
   explicit SkipList(Comparator cmp, Arena* arena);
 
   SkipList(const SkipList&) = delete;
@@ -52,12 +53,15 @@ class SkipList {
 
   // Insert key into the list.
   // REQUIRES: nothing that compares equal to key is currently in the list.
+  // 要求：当前列表中没有与 key 相等的比较对象。
   void Insert(const Key& key);
 
   // Returns true iff an entry that compares equal to key is in the list.
+  // 列表中如果存在和key值相同的数返回true
   bool Contains(const Key& key) const;
 
   // Iteration over the contents of a skip list
+  // 对跳表内容迭代
   class Iterator {
    public:
     // Initialize an iterator over the specified list.
@@ -80,15 +84,16 @@ class SkipList {
     void Prev();
 
     // Advance to the first entry with a key >= target
+    // 找到第一个大于等于target的key节点
     void Seek(const Key& target);
 
     // Position at the first entry in list.
     // Final state of iterator is Valid() iff list is not empty.
-    void SeekToFirst();
+    void SeekToFirst();//首节点
 
     // Position at the last entry in list.
     // Final state of iterator is Valid() iff list is not empty.
-    void SeekToLast();
+    void SeekToLast();//尾结点
 
    private:
     const SkipList* list_;
@@ -97,7 +102,7 @@ class SkipList {
   };
 
  private:
-  enum { kMaxHeight = 12 };
+  enum { kMaxHeight = 12 };//跳表的最大高度
 
   inline int GetMaxHeight() const {
     return max_height_.load(std::memory_order_relaxed);
@@ -115,6 +120,12 @@ class SkipList {
   //
   // If prev is non-null, fills prev[level] with pointer to previous
   // node at "level" for every level in [0..max_height_-1].
+  /*
+  返回在 key 之前或之后的最早节点
+  如果没有这样的节点，则返回 nullptr
+  如果 prev 为非空，则在 [0..max_height_-1] 中的每一级
+  用指向 “level” 上一级节点的指针填充 prev[level]
+  */
   Node* FindGreaterOrEqual(const Key& key, Node** prev) const;
 
   // Return the latest node with a key < key.
@@ -148,20 +159,45 @@ struct SkipList<Key, Comparator>::Node {
 
   // Accessors/mutators for links.  Wrapped in methods so we can
   // add the appropriate barriers as necessary.
+  // 链接的访问器/突变器,用方法封装后，我们可以根据需要添加相应的障碍。
   Node* Next(int n) {
     assert(n >= 0);
     // Use an 'acquire load' so that we observe a fully initialized
     // version of the returned Node.
+    /*
+    Next(int n)方法用于获取当前节点的第n层的下一个节点。
+    为什么使用 memory_order_acquire：因为 Next 返回的是指向其他节点的指针，
+    在多线程环境下，确保读取到的节点对象已经初始化并可见是至关重要的。
+    使用acquire内存顺序会保证读取到的next_[n]指针指向的内容是最新的且完全初始化的。
+    
+    工作原理：当一个线程读取到next_[n]的值时
+    memory_order_acquire会确保在这次读取之前的所有写入操作（包括指向节点的数据初始化）都已完成，且可见。
+    */
     return next_[n].load(std::memory_order_acquire);
   }
   void SetNext(int n, Node* x) {
     assert(n >= 0);
     // Use a 'release store' so that anybody who reads through this
     // pointer observes a fully initialized version of the inserted node.
+    //使用 “释放存储”，以便读取此 指针的人都会看到插入节点的完全初始化版本。
+    /*SetNext(int n, Node* x)方法设置当前节点在第n层的下一个节点。
+    使用 memory_order_release：确保当前线程完成对next_[n]的写入后
+    其他线程能够看到指向的节点x的完整初始化状态。
+    配合memory_order_acquire，可以实现线程间的数据可见性同步。
+    
+    */
     next_[n].store(x, std::memory_order_release);
   }
 
   // No-barrier variants that can be safely used in a few locations.
+
+  /*
+  memory_order_relaxed不保证线程间的可见性，只保证读取的原子性
+  使用此方法时，读取到的数据不一定是最新的，所以仅在不影响数据正确性的情况下使用
+  
+  不提供同步或顺序保证，只在无需跨线程可见性同步的场景下使用
+  通常，可能是为了优化极少数性能关键的场景。
+  */
   Node* NoBarrier_Next(int n) {
     assert(n >= 0);
     return next_[n].load(std::memory_order_relaxed);

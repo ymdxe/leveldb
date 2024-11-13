@@ -108,6 +108,7 @@ include_directories(
   "${PROJECT_BINARY_DIR}/include"
   "."
 )
+# include_directories(/home/ymdxe/zh/leveldb/include)
 
 if(BUILD_SHARED_LIBS)
   # Only export LEVELDB_EXPORT symbols from the shared library.
